@@ -16,12 +16,29 @@
 - Recommended RPC: `https://polygon-rpc.com` (or your provider)
 
 ## Dependencies
-Managed via `package.json`:
-- `axios`: HTTP client for Core Data API
-- `ethers`: Wallet and contract utils
-- `@polymarket/clob-client`: CLOB client utilities
+Managed via package.json:
+
+Exact versions currently used:
+
+- @polymarket/builder-relayer-client: ^0.0.8
+- @polymarket/builder-signing-sdk: ^0.0.8
+- @polymarket/clob-client: ^5.1.2
+- axios: ^1.13.2
+- cors: ^2.8.5
+- dotenv: ^17.2.3
+- ethers: ^5.8.0
+- express: ^4.22.1
+- magic-sdk: ^32.0.0
+- viem: ^2.43.3
 
 ## Security Practices
 - Do not commit `.env` or secrets (covered by `.gitignore`).
 - Keep Builder/Relayer credentials server-side only.
 - Use rate limits and caching where appropriate.
+
+## Run
+To start the dashboard server:
+
+```bash
+node dashboard-server.js
+```
