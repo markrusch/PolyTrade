@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket Trading Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #e2e8f0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    
+    .header {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+    }
+    .title { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+    .status { display: flex; gap: 20px; font-size: 13px; flex-wrap: wrap; }
+    .status-item { display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .status-dot.connected { background: #10b981; }
+    .status-dot.error { background: #ef4444; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+    }
+    .card-title { font-size: 14px; font-weight: 600; color: #cbd5e1; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .button:hover { background: #2563eb; transform: translateY(-1px); }
+    .button:active { transform: translateY(0); }
+    .button.danger { background: #ef4444; }
+    .button.danger:hover { background: #dc2626; }
+    .button.success { background: #10b981; }
+    .button.success:hover { background: #059669; }
+    .button:disabled { background: #64748b; cursor: not-allowed; opacity: 0.6; }
+
+    .tabs { display: flex; gap: 10px; margin-bottom: 12px; }
+    .tab-button {
+      background: rgba(148, 163, 184, 0.12);
+      color: #e2e8f0;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tab-button.active { background: #3b82f6; border-color: #60a5fa; box-shadow: 0 4px 12px rgba(59,130,246,0.35); }
+    .tab-button:hover { transform: translateY(-1px); }
+
+    .message {
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .message.show { display: block; }
+    .message.success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #86efac; }
+    .message.error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
+    .message.info { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; }
+
+    .balance-display {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 8px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #60a5fa;
+      margin-bottom: 10px;
+    }
+
+    table {
+      width: 100%;
+      font-size: 12px;
+      border-collapse: collapse;
+    }
+    th, td { padding: 10px; text-align: left; }
+    th { 
+      border-bottom: 2px solid rgba(148, 163, 184, 0.3);
+      color: #94a3b8;
+      font-weight: 600;
+    }
+    tr { border-bottom: 1px solid rgba(148, 163, 184, 0.1); }
+    tr:nth-child(even) { background: rgba(15, 23, 42, 0.5); }
+
+    .footer { margin-top: 40px; padding: 20px; text-align: center; font-size: 12px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="title">📊 Polymarket Trading Dashboard</div>
+      <div class="status">
+        <div class="status-item">
+          <div class="status-dot connected" id="serverDot"></div>
+          <span>Server: <span id="serverStatus">Checking...</span></span>
+        </div>
+        <div class="status-item">
+          <div class="status-dot" id="balancesDot"></div>
+          <span>Balances: <span id="balancesStatusText">—</span></span>
+        </div>
+        <div class="status-item">
+          <div class="status-dot" id="ordersDot"></div>
+          <span>Orders: <span id="ordersStatusText">—</span></span>
+        </div>
+        <div class="status-item">
+          <div class="status-dot" id="positionsDot"></div>
+          <span>Positions: <span id="positionsStatusText">—</span></span>
+        </div>
+        <div class="status-item">
+          <div class="status-dot" id="closedDot"></div>
+          <span>Closed: <span id="closedStatusText">—</span></span>
+        </div>
+        <div class="status-item">
+          <div class="status-dot" id="tradeCacheDot"></div>
+          <span>Trades: <span id="tradeCacheStatusText">—</span></span>
+        </div>
+        <div class="status-item">
+          <div class="status-dot" id="coreTradesDot"></div>
+          <span>Core Trades: <span id="coreTradesStatusText">—</span></span>
+        </div>
+        <div class="status-item">
+          <div class="status-dot" id="dataApiPnlDot"></div>
+          <span>PnL: <span id="dataApiPnlStatusText">—</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="messageBox" class="message"></div>
+    
+    <!-- Debug Console -->
+    <div id="debugConsole" style="display: none; background: #0f0f0f; color: #00ff00; font-family: monospace; font-size: 11px; padding: 10px; margin-bottom: 10px; border-radius: 5px; max-height: 150px; overflow-y: auto; border: 1px solid #333;">
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid-2" style="margin-bottom: 20px;">
+      <div class="card">
+        <div class="card-title">💰 Account Balance <span id="balancesAge" style="font-weight:400; color:#94a3b8; font-size:12px; margin-left:8px;"></span></div>
+        <div class="balance-display">
+          <strong>USDC Available:</strong> <span id="balanceAmount">Loading...</span>
+        </div>
+        <button class="button" onclick="refreshBalance()" style="width: 100%;">Refresh Balance</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚡ Emergency Controls</div>
+        <button class="button danger" onclick="killswitch()" style="width: 100%; margin-bottom: 8px; padding: 12px;">
+          🛑 KILLSWITCH - Cancel All Orders
+        </button>
+        <button class="button" onclick="refresh()" style="width: 100%; padding: 12px;">
+          🔄 Refresh All Data
+        </button>
+      </div>
+    </div>
+
+    <!-- PnL Summary (New Data API) -->
+    <div class="grid-2" style="margin-bottom: 20px;">
+      <div class="card">
+        <div class="card-title">📊 Portfolio Summary (Data API) <span id="pnlAge" style="font-weight:400; color:#94a3b8; font-size:12px; margin-left:8px;"></span></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+          <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; padding: 10px;">
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Portfolio Value</div>
+            <div id="portfolioValue" style="font-size: 18px; font-weight: 700; color: #60a5fa;">$0.00</div>
+          </div>
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 10px;">
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Total PnL</div>
+            <div id="totalPnL" style="font-size: 18px; font-weight: 700; color: #10b981;">$0.00</div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 6px; padding: 10px;">
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Unrealized PnL</div>
+            <div id="unrealizedPnL" style="font-size: 14px; font-weight: 600; color: #fbbf24;">$0.00</div>
+          </div>
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 10px;">
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Realized PnL</div>
+            <div id="realizedPnL" style="font-size: 14px; font-weight: 600; color: #10b981;">$0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📈 Position Stats</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; padding: 10px; text-align: center;">
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Open Positions</div>
+            <div id="openPositionsCount" style="font-size: 24px; font-weight: 700; color: #60a5fa;">0</div>
+          </div>
+          <div style="background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; padding: 10px; text-align: center;">
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Closed Positions</div>
+            <div id="closedPositionsCount" style="font-size: 24px; font-weight: 700; color: #94a3b8;">0</div>
+          </div>
+        </div>
+        <button class="button" onclick="refreshPnLData()" style="width: 100%; margin-top: 10px;">🔄 Refresh PnL</button>
+      </div>
+    </div>
+
+    <!-- Open Orders -->
+    <div class="card" style="margin-bottom: 20px;">
+      <div class="card-title">📋 Open Orders (Pending) <span id="ordersAge" style="font-weight:400; color:#94a3b8; font-size:12px; margin-left:8px;"></span></div>
+      <div id="ordersContainer">
+        <p style="color: #94a3b8; text-align: center; padding: 20px;">Loading orders...</p>
+      </div>
+    </div>
+
+    <!-- Open Positions -->
+    <div class="card" style="margin-bottom: 20px;">
+      <div class="card-title">📈 Open Positions (Core API) <span id="positionsAge" style="font-weight:400; color:#94a3b8; font-size:12px; margin-left:8px;"></span></div>
+      <div id="positionsContainer">
+        <p style="color: #94a3b8; text-align: center; padding: 20px;">Loading positions...</p>
+      </div>
+    </div>
+
+    <!-- Closed Positions Tabs -->
+    <div class="card" style="margin-bottom: 20px;">
+      <div class="card-title">📊 Closed Positions (P&L History) <span id="closedAge" style="font-weight:400; color:#94a3b8; font-size:12px; margin-left:8px;"></span></div>
+      <div class="tabs">
+        <button class="tab-button active" id="tab-closed-clob" onclick="showClosedTab('clob')">CLOB PnL</button>
+        <button class="tab-button" id="tab-closed-core" onclick="showClosedTab('core')">Core PnL</button>
+      </div>
+      <div id="closedPositionsCoreContainer" class="tab-content">
+        <p style="color: #94a3b8; text-align: center; padding: 20px;">Loading core P&L...</p>
+      </div>
+      <div id="closedPositionsClobContainer" class="tab-content" style="display:none;">
+        <p style="color: #94a3b8; text-align: center; padding: 20px;">Loading CLOB P&L...</p>
+      </div>
+    </div>
+
+    <!-- Trade History -->
+    <div class="card" style="margin-bottom: 20px;">
+      <div class="card-title">📜 Trade History (CLOB vs Core) <span id="tradesAge" style="font-weight:400; color:#94a3b8; font-size:12px; margin-left:8px;"></span></div>
+      <div class="tabs">
+        <button class="tab-button active" id="tab-clob" onclick="showTradesTab('clob')">CLOB Trades</button>
+        <button class="tab-button" id="tab-core" onclick="showTradesTab('core')">Core Trades</button>
+      </div>
+      <div id="tradeHistoryContainer" class="tab-content">
+        <p style="color: #94a3b8; text-align: center; padding: 20px;">Loading CLOB trade history...</p>
+      </div>
+      <div id="coreTradeContainer" class="tab-content" style="display:none;">
+        <p style="color: #94a3b8; text-align: center; padding: 20px;">Loading Core trades...</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      Polymarket Builder Trading Dashboard • Powered by CLOB API<br>
+      <span id="updateTime" style="color: #475569;"></span>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let orders = [];
+    let positions = [];
+    let clobTrades = [];
+    let coreTrades = [];
+    let activeTradesTab = 'clob';
+    let activeClosedTab = 'core';
+
+    // API calls
+    async function apiCall(endpoint) {
+      try {
+        debugLog(`📡 API: ${endpoint}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        debugLog(`  Status: ${response.status}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        debugLog(`  ✅ Got data`);
+        return data;
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          debugLog(`⏱️ Timeout: ${endpoint}`);
+          throw new Error(`API timeout at ${endpoint} (no response for 5 seconds)`);
+        }
+        debugLog(`❌ Error: ${error.message}`);
+        throw new Error(`API Error on ${endpoint}: ${error.message}`);
+      }
+    }
+
+    async function refreshBalance() {
+      try {
+        debugLog('💰 Fetching balance...');
+        const result = await apiCall('/api/balances');
+        if (result.success && result.balances) {
+          const total = result.balances.reduce((sum, b) => sum + b.amount, 0);
+          document.getElementById('balanceAmount').textContent = `$${total.toFixed(2)} USDC`;
+          debugLog(`✅ Balance: $${total.toFixed(2)}`);
+          showMessage('✅ Balance updated', 'success');
+        } else {
+          debugLog(`⚠️ Balance response invalid: ${JSON.stringify(result).substring(0, 100)}`);
+        }
+      } catch (error) {
+        debugLog(`❌ Balance error: ${error.message}`);
+        showMessage('❌ ' + error.message, 'error');
+      }
+    }
+
+    async function refreshPnLData() {
+      try {
+        debugLog('📊 Fetching PnL data from Data API...');
+        showMessage('🔄 Refreshing PnL data...', 'info');
+
+        const [pnlRes, valueRes] = await Promise.all([
+          fetch('http://localhost:8000/api/data-api/pnl', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          }).then(r => r.json()),
+          fetch('http://localhost:8000/api/data-api/portfolio-value', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          }).then(r => r.json())
+        ]);
+
+        if (pnlRes.success && pnlRes.pnl) {
+          const pnl = pnlRes.pnl;
+          
+          // Update portfolio value
+          const portfolioValue = valueRes.success ? (valueRes.value || 0) : 0;
+          document.getElementById('portfolioValue').textContent = `$${portfolioValue.toFixed(2)}`;
+          
+          // Update PnL values
+          const totalPnL = parseFloat(pnl.totalPnL || 0);
+          const unrealizedPnL = parseFloat(pnl.unrealizedPnL || 0);
+          const realizedPnL = parseFloat(pnl.totalRealizedPnL || 0);
+          
+          // Color coding
+          const totalColor = totalPnL >= 0 ? '#10b981' : '#f87171';
+          const unrealizedColor = unrealizedPnL >= 0 ? '#fbbf24' : '#f87171';
+          const realizedColor = realizedPnL >= 0 ? '#10b981' : '#f87171';
+          
+          document.getElementById('totalPnL').textContent = `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(2)}`;
+          document.getElementById('totalPnL').style.color = totalColor;
+          
+          document.getElementById('unrealizedPnL').textContent = `${unrealizedPnL >= 0 ? '+' : ''}$${unrealizedPnL.toFixed(2)}`;
+          document.getElementById('unrealizedPnL').style.color = unrealizedColor;
+          
+          document.getElementById('realizedPnL').textContent = `${realizedPnL >= 0 ? '+' : ''}$${realizedPnL.toFixed(2)}`;
+          document.getElementById('realizedPnL').style.color = realizedColor;
+          
+          // Update counts
+          document.getElementById('openPositionsCount').textContent = pnl.openPositionsCount || 0;
+          document.getElementById('closedPositionsCount').textContent = pnl.closedPositionsCount || 0;
+          
+          // Update status indicator
+          document.getElementById('dataApiPnlDot').classList.add('connected');
+          document.getElementById('dataApiPnlStatusText').textContent = `✅ Loaded`;
+          
+          debugLog(`✅ PnL updated: Total=${totalPnL}, Unrealized=${unrealizedPnL}, Realized=${realizedPnL}`);
+          showMessage('✅ PnL data updated', 'success');
+        } else {
+          debugLog(`⚠️ PnL response invalid`);
+          document.getElementById('dataApiPnlDot').classList.remove('connected');
+          document.getElementById('dataApiPnlDot').classList.add('error');
+          document.getElementById('dataApiPnlStatusText').textContent = `❌ Failed`;
+          showMessage('⚠️ Failed to fetch PnL data', 'error');
+        }
+      } catch (error) {
+        debugLog(`❌ PnL error: ${error.message}`);
+        document.getElementById('dataApiPnlDot').classList.remove('connected');
+        document.getElementById('dataApiPnlDot').classList.add('error');
+        document.getElementById('dataApiPnlStatusText').textContent = `❌ Error`;
+        showMessage('❌ ' + error.message, 'error');
+      }
+    }
+
+    async function refreshOrders() {
+      try {
+        debugLog('📋 Fetching orders...');
+        const result = await apiCall('/api/orders');
+        if (result.success && result.orders) {
+          orders = result.orders;
+          displayOrders();
+          debugLog(`✅ Got ${orders.length} orders`);
+        } else {
+          debugLog(`⚠️ Orders response invalid`);
+        }
+      } catch (error) {
+        debugLog(`❌ Orders error: ${error.message}`);
+      }
+    }
+
+    async function refreshPositions() {
+      try {
+        debugLog('📈 Fetching positions...');
+        const result = await apiCall('/api/positions-core');
+        if (result.success && result.positions) {
+          positions = result.positions;
+          displayPositions();
+          debugLog(`✅ Got ${positions.length} positions`);
+        } else {
+          debugLog(`⚠️ Positions response invalid`);
+          document.getElementById('positionsContainer').innerHTML = '<p style="color: #f87171; text-align: center; padding: 20px;">⚠️ No positions returned from Core API</p>';
+        }
+      } catch (error) {
+        debugLog(`❌ Positions error: ${error.message}`);
+        document.getElementById('positionsContainer').innerHTML = '<p style="color: #f87171; text-align: center; padding: 20px;">❌ Failed to load positions</p>';
+      }
+    }
+
+    function displayOrders() {
+      const container = document.getElementById('ordersContainer');
+      
+      if (!orders || orders.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No pending orders</p>';
+        return;
+      }
+
+      const grouped = orders.reduce((acc, order) => {
+        const key = order.eventTitle || order.market || 'Unknown Event';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(order);
+        return acc;
+      }, {});
+
+      let html = '';
+      Object.entries(grouped).forEach(([eventTitle, groupOrders]) => {
+        html += `<details open style="margin-bottom: 10px; background: rgba(15,23,42,0.35); border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 10px 12px;">
+          <summary style="cursor: pointer; color: #e2e8f0; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+            <span>${eventTitle}</span>
+            <span style="font-size: 12px; color: #94a3b8;">${groupOrders.length} order(s)</span>
+          </summary>
+          <div style="margin-top: 10px; overflow-x: auto;"><table>`;
+        html += '<thead><tr><th>Outcome</th><th>Side</th><th>Price</th><th>Size</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+
+        groupOrders.forEach((order) => {
+          const side = (order.side || 'SELL').toUpperCase();
+          const sideColor = side === 'BUY' ? '#60a5fa' : '#f87171';
+          const marketDescription = order.marketDescription || order.market || 'Unknown';
+
+          html += `<tr>
+            <td><span style="font-size: 11px; color: #94a3b8;">${marketDescription}</span></td>
+            <td><span style="color: ${sideColor}; font-weight: 600;">${side}</span></td>
+            <td>$${parseFloat(order.price || 0).toFixed(4)}</td>
+            <td>${parseFloat(order.size || 0).toFixed(2)} shares</td>
+            <td>${order.status || 'PENDING'}</td>
+            <td>
+              <button class="button danger" onclick="cancelOrder('${order.id}')" style="padding: 6px 10px; font-size: 11px;">
+                ✕ Cancel
+              </button>
+            </td>
+          </tr>`;
+        });
+
+        html += '</tbody></table></div></details>';
+      });
+
+      container.innerHTML = html;
+    }
+
+    function displayPositions() {
+      const container = document.getElementById('positionsContainer');
+      
+      if (!positions || positions.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No open positions</p>';
+        return;
+      }
+
+      let html = '<div style="overflow-x: auto;"><table>';
+      html += '<thead><tr><th>Event</th><th>Outcome</th><th>Size</th><th>Price</th><th>Value</th><th>P&L ($)</th><th>P&L (%)</th><th>Actions</th></tr></thead><tbody>';
+
+      positions.forEach((pos) => {
+        const eventTitle = pos.eventTitle || pos.title || 'Unknown Event';
+        const outcome = pos.outcome || 'N/A';
+        const size = parseFloat(pos.size || 0);
+        const curPrice = parseFloat(pos.curPrice || 0);
+        const currentValue = parseFloat(pos.currentValue || 0);
+        const cashPnl = parseFloat(pos.cashPnl || 0);
+        const percentPnl = parseFloat(pos.percentPnl || 0);
+        const pnlColor = cashPnl < 0 ? '#f87171' : '#10b981';
+        const tokenId = (pos.asset || pos.token_id || '').replace(/'/g, "\\'");
+        const marketId = (pos.conditionId || pos.eventId || '').replace(/'/g, "\\'");
+        const outcomeSafe = outcome.replace(/'/g, "\\'");
+
+        html += `<tr>
+          <td><strong style="color: #60a5fa;">${eventTitle}</strong></td>
+          <td>${outcome}</td>
+          <td style="color: #10b981;">${size.toFixed(3)} shares</td>
+          <td>$${curPrice.toFixed(4)}</td>
+          <td>$${currentValue.toFixed(4)}</td>
+          <td style="color: ${pnlColor}; font-weight: 600;">${cashPnl.toFixed(4)}</td>
+          <td style="color: ${pnlColor}; font-weight: 600;">${percentPnl.toFixed(2)}%</td>
+          <td>
+            <button class="button success" onclick="promptSellAmount('${tokenId}', ${size}, '${marketId}', '${outcomeSafe}')" style="padding: 6px 10px; font-size: 11px;">
+              📤 Sell
+            </button>
+          </td>
+        </tr>`;
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    async function refreshClosedPositions() {
+      try {
+        const [coreResp, clobResp] = await Promise.all([
+          fetch('http://localhost:8000/api/closed-positions-core', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }).then(r => r.json()),
+          fetch('http://localhost:8000/api/closed-positions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }).then(r => r.json())
+        ]);
+
+        if (coreResp.success && coreResp.data) {
+          displayClosedPositionsCore(coreResp.data);
+        } else {
+          document.getElementById('closedPositionsCoreContainer').innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No core closed positions yet</p>';
+        }
+
+        if (clobResp.success && clobResp.closedPositions) {
+          displayClosedPositionsClob(clobResp.closedPositions);
+        } else {
+          document.getElementById('closedPositionsClobContainer').innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No CLOB closed positions yet</p>';
+        }
+
+        showClosedTab(activeClosedTab);
+      } catch (error) {
+        console.error('Error fetching closed positions:', error);
+        document.getElementById('closedPositionsCoreContainer').innerHTML = '<p style="color: #f87171; text-align: center; padding: 20px;">❌ Failed to load core closed positions</p>';
+        document.getElementById('closedPositionsClobContainer').innerHTML = '<p style="color: #f87171; text-align: center; padding: 20px;">❌ Failed to load CLOB closed positions</p>';
+      }
+    }
+
+    function showClosedTab(tab) {
+      activeClosedTab = tab;
+      const coreEl = document.getElementById('closedPositionsCoreContainer');
+      const clobEl = document.getElementById('closedPositionsClobContainer');
+      document.getElementById('tab-closed-core').classList.toggle('active', tab === 'core');
+      document.getElementById('tab-closed-clob').classList.toggle('active', tab === 'clob');
+      coreEl.style.display = tab === 'core' ? 'block' : 'none';
+      clobEl.style.display = tab === 'clob' ? 'block' : 'none';
+    }
+
+    function displayClosedPositionsCore(data) {
+      const container = document.getElementById('closedPositionsCoreContainer');
+      const positions = data.closedPositions || [];
+
+      if (!positions || positions.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No core closed positions yet</p>';
+        return;
+      }
+
+      let html = '<div style="overflow-x: auto;"><table>';
+      html += '<thead><tr><th>Event</th><th>Outcome</th><th>P&L ($)</th><th>P&L (%)</th></tr></thead><tbody>';
+
+      positions.forEach((pos) => {
+        const eventTitle = pos.title || pos.slug || pos.event || 'Unknown Event';
+        const pnlColor = pos.totalRealizedPnl < 0 ? '#f87171' : '#10b981';
+        const pnlSign = pos.totalRealizedPnl < 0 ? '−' : '+';
+
+        (pos.positions || []).forEach(out => {
+          const realized = parseFloat(out.realizedPnl || 0);
+          const pct = parseFloat(out.percentRealizedPnl || 0);
+          const color = realized < 0 ? '#f87171' : '#10b981';
+          const sign = realized < 0 ? '−' : '+';
+          html += `<tr>
+            <td><strong style="color: #60a5fa;">${eventTitle}</strong></td>
+            <td>${out.outcome || 'N/A'}</td>
+            <td style="color: ${color}; font-weight: 600;">${sign}$${Math.abs(realized).toFixed(4)}</td>
+            <td style="color: ${color}; font-weight: 600;">${sign}${Math.abs(pct).toFixed(2)}%</td>
+          </tr>`;
+        });
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    function displayClosedPositionsClob(closedPositions) {
+      const container = document.getElementById('closedPositionsClobContainer');
+      
+      if (!closedPositions || closedPositions.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No CLOB closed positions yet</p>';
+        return;
+      }
+
+      let html = '<div style="overflow-x: auto;"><table>';
+      html += '<thead><tr><th>Event</th><th>Market</th><th>Qty</th><th>Avg Buy</th><th>Avg Sell</th><th>P&L ($)</th><th>P&L (%)</th><th>Status</th></tr></thead><tbody>';
+
+      closedPositions.forEach((pos) => {
+        const qtyBought = parseFloat(pos.quantityBought || 0);
+        const qtySold = parseFloat(pos.quantitySold || 0);
+        const pnlAbsolute = parseFloat(pos.pnlAbsolute || 0);
+        const pnlPercent = parseFloat(pos.pnlPercent || 0);
+        const avgBuyPrice = parseFloat(pos.avgBuyPrice || 0);
+        const avgSellPrice = parseFloat(pos.avgSellPrice || 0);
+        
+        const pnlColor = pnlAbsolute < 0 ? '#f87171' : '#10b981';
+        const pnlSign = pnlAbsolute < 0 ? '−' : '+';
+        const eventTitle = pos.eventTitle || pos.marketTitle || 'Unknown Event';
+        const marketDescription = pos.marketDescription || 'Unknown';
+        
+        html += `<tr>
+          <td><strong style="color: #60a5fa;">${eventTitle}</strong></td>
+          <td><span style="font-size: 11px; color: #94a3b8;">${marketDescription}</span></td>
+          <td>${qtySold.toFixed(2)}</td>
+          <td>$${avgBuyPrice.toFixed(4)}</td>
+          <td>$${avgSellPrice.toFixed(4)}</td>
+          <td><strong style="color: ${pnlColor};">${pnlSign}$${Math.abs(pnlAbsolute).toFixed(2)}</strong></td>
+          <td><strong style="color: ${pnlColor};">${pnlSign}${Math.abs(pnlPercent).toFixed(2)}%</strong></td>
+          <td><span style="font-size: 11px; color: #94a3b8;">${pos.status || 'CLOSED'}</span></td>
+        </tr>`;
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    async function cancelOrder(orderId) {
+      if (!confirm('❌ Cancel this order?')) return;
+      
+      try {
+        showMessage('🔄 Cancelling order...', 'info');
+        const response = await fetch('http://localhost:8000/api/cancel-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          showMessage('✅ Order cancelled successfully!', 'success');
+          await new Promise(r => setTimeout(r, 800));
+          await refreshOrders();
+        } else {
+          showMessage('❌ Cancel failed: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showMessage('❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    function promptSellAmount(tokenId, maxSize, marketId, outcome) {
+      // First, prompt user for the quantity to sell
+      const quantityInput = prompt(
+        `📤 How many shares to sell? (Max: ${maxSize.toFixed(2)})\n\nNote: If order fails, try a smaller amount. Start with 5-10 shares.`,
+        '5'  // Default to 5 shares (known to work)
+      );
+
+      if (quantityInput === null) {
+        // User cancelled
+        return;
+      }
+
+      const amountToSell = parseFloat(quantityInput);
+      
+      // Validate the quantity input
+      if (!Number.isFinite(amountToSell) || amountToSell <= 0) {
+        showMessage('❌ Invalid amount. Must be a positive number.', 'error');
+        return;
+      }
+
+      if (amountToSell > maxSize) {
+        showMessage(`❌ Amount exceeds position size (${maxSize.toFixed(2)} shares).`, 'error');
+        return;
+      }
+
+      // Now prompt for the price per share
+      const priceInput = prompt(
+        `💰 What price per share? (in dollars)\n\nExample: 0.50 for 50 cents, 0.75 for 75 cents`,
+        '0.50'  // Default to 50 cents
+      );
+
+      if (priceInput === null) {
+        // User cancelled
+        return;
+      }
+
+      const pricePerShare = parseFloat(priceInput);
+      
+      // Validate the price input
+      if (!Number.isFinite(pricePerShare) || pricePerShare < 0) {
+        showMessage('❌ Invalid price. Must be a non-negative number.', 'error');
+        return;
+      }
+
+      if (pricePerShare > 1) {
+        showMessage('❌ Price exceeds $1.00. Conditional market prices are 0-1.', 'error');
+        return;
+      }
+
+      // Proceed with the sell
+      sellPosition(tokenId, amountToSell, marketId, outcome, pricePerShare);
+    }
+
+
+    async function sellPosition(tokenId, size, marketId, outcome, price = 0.50) {
+      // Input validation with type checking
+      if (!tokenId || typeof tokenId !== 'string' || tokenId.trim() === '') {
+        showMessage('❌ Invalid tokenId', 'error');
+        return;
+      }
+      
+      const sizeNum = parseFloat(size);
+      if (!Number.isFinite(sizeNum) || sizeNum <= 0) {
+        showMessage(`❌ Invalid size: ${size}. Must be a positive number.`, 'error');
+        return;
+      }
+
+      const priceNum = parseFloat(price);
+      if (!Number.isFinite(priceNum) || priceNum < 0 || priceNum > 1) {
+        showMessage(`❌ Invalid price: ${price}. Must be between 0 and 1.`, 'error');
+        return;
+      }
+      
+      if (!confirm(`📤 Sell ${sizeNum.toFixed(2)} shares at $${priceNum.toFixed(2)}?`)) return;
+      
+      try {
+        // Pre-validate with server guards before placing order
+        showMessage('🔍 Validating sell request...', 'info');
+        const validateResp = await fetch('http://localhost:8000/api/sell/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenId: tokenId.trim(), size: sizeNum })
+        }).then(r => r.json());
+
+        if (!validateResp.success) {
+          showMessage('❌ Validation failed: ' + (validateResp.error || 'Unknown error'), 'error');
+          return;
+        }
+        if (!validateResp.ok) {
+          const ai = validateResp.allowanceInfo || {};
+          const reasons = [];
+          if (sizeNum > (validateResp.netPosition || 0)) reasons.push('Amount exceeds net position');
+          if (ai.isBalanceSufficient === false) reasons.push('Insufficient token balance');
+          if (ai.isAllowanceSufficient === false) reasons.push('Insufficient allowance');
+          const msg = reasons.length ? reasons.join('; ') : 'Validation conditions not met';
+          showMessage('❌ Cannot sell: ' + msg, 'error');
+          return;
+        }
+
+        showMessage('🔄 Placing sell order...', 'info');
+        
+        // Prepare order data with explicit types and clear documentation
+        // INPUT CONTRACT: All fields must match expected types
+        const orderData = {
+          tokenId: tokenId.trim(),      // String: token ID from position (asset_id from trades)
+          size: sizeNum,                 // Number: amount to sell (must be positive)
+          price: priceNum,               // Number: limit price (0 to 1, non-negative)
+          outcome: outcome || 'YES',     // String: position outcome (YES or NO)
+          marketId: marketId || null     // Optional: market identifier
+        };
+        
+        const response = await fetch('http://localhost:8000/api/sell', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(orderData)
+        });
+        const result = await response.json();
+        
+        // OUTPUT CONTRACT: Check result structure
+        if (result.success && result.orderID) {
+          showMessage(`✅ Order #${result.orderID}: ${sizeNum} shares @ $${priceNum.toFixed(2)}`, 'success');
+          console.log('✅ Sell order created:', result.orderDetails);
+          await new Promise(r => setTimeout(r, 1000));
+          await refreshOrders();
+          await refreshPositions();
+        } else {
+          showMessage('❌ Sell failed: ' + (result.error || 'Unknown error'), 'error');
+          console.error('❌ API Error:', result);
+        }
+      } catch (error) {
+        showMessage('❌ Network error: ' + error.message, 'error');
+        console.error('❌ Exception:', error);
+      }
+    }
+
+    async function killswitch() {
+      const confirmed1 = confirm('⚠️⚠️⚠️ CANCEL ALL OPEN ORDERS?');
+      if (!confirmed1) return;
+      
+      const confirmed2 = confirm('🛑 This is IRREVERSIBLE! Confirm again?');
+      if (!confirmed2) return;
+      
+      try {
+        showMessage('🔄 Executing killswitch...', 'info');
+        const response = await fetch('http://localhost:8000/api/killswitch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          const cancelled = result.cancelledCount || 0;
+          showMessage(`✅ Killswitch executed! Cancelled ${cancelled} orders.`, 'success');
+          await new Promise(r => setTimeout(r, 1000));
+          await refreshOrders();
+        } else {
+          showMessage('❌ Killswitch failed: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showMessage('❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    async function refreshAllowances() {
+      try {
+        const result = await apiCall('/api/check-allowances');
+        if (result.success && result.allowances) {
+          displayAllowances(result.allowances);
+        }
+      } catch (error) {
+        console.error('Allowances error:', error);
+        document.getElementById('allowancesContainer').innerHTML = '<p style="color: #f87171; text-align: center; padding: 20px;">❌ Failed to check allowances</p>';
+      }
+    }
+
+    async function refreshTradeHistory() {
+      try {
+        const [clobResult, coreResult] = await Promise.all([
+          apiCall('/api/trade-history'),
+          fetch('http://localhost:8000/api/trades-core', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ takerOnly: true })
+          }).then(r => r.json())
+        ]);
+
+        if (clobResult.success && clobResult.tradeHistory) {
+          clobTrades = clobResult.tradeHistory;
+          displayTradeHistory(clobTrades);
+        }
+
+        if (coreResult.success && coreResult.trades) {
+          coreTrades = coreResult.trades;
+          displayCoreTrades(coreTrades);
+        } else {
+          document.getElementById('coreTradeContainer').innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">⚠️ No core trades returned</p>';
+        }
+
+        showTradesTab(activeTradesTab);
+      } catch (error) {
+        console.error('Trade history error:', error);
+        document.getElementById('tradeHistoryContainer').innerHTML = '<p style="color: #f87171; text-align: center; padding: 20px;">❌ Failed to load trade history</p>';
+        document.getElementById('coreTradeContainer').innerHTML = '<p style="color: #f87171; text-align: center; padding: 20px;">❌ Failed to load core trades</p>';
+      }
+    }
+
+    function showTradesTab(tab) {
+      activeTradesTab = tab;
+      const clobEl = document.getElementById('tradeHistoryContainer');
+      const coreEl = document.getElementById('coreTradeContainer');
+      document.getElementById('tab-clob').classList.toggle('active', tab === 'clob');
+      document.getElementById('tab-core').classList.toggle('active', tab === 'core');
+      clobEl.style.display = tab === 'clob' ? 'block' : 'none';
+      coreEl.style.display = tab === 'core' ? 'block' : 'none';
+    }
+
+    function displayAllowances(allowances) {
+      const container = document.getElementById('allowancesContainer');
+      
+      if (!allowances || allowances.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No open positions to verify</p>';
+        return;
+      }
+
+      let html = '<div style="overflow-x: auto;"><table>';
+      html += '<thead><tr><th>Event</th><th>Outcome</th><th>Position</th><th>Balance</th><th>Allowance</th><th>Status</th></tr></thead><tbody>';
+
+      allowances.forEach((allow) => {
+        const statusColor = allow.hasAllowance ? (allow.isAllowanceSufficient ? '#10b981' : '#f59e0b') : '#ef4444';
+        const eventTitle = allow.eventTitle || 'Unknown Event';
+        const outcome = allow.outcome || 'Unknown';
+        const posSize = parseFloat(allow.positionSize || 0);
+        const balance = parseFloat(allow.balance || 0);
+        const allowanceAmount = parseFloat(allow.allowance || 0);
+        
+        html += `<tr>
+          <td><strong style="color: #60a5fa;">${eventTitle}</strong></td>
+          <td>${outcome}</td>
+          <td style="color: #10b981;">${posSize.toFixed(2)} shares</td>
+          <td>${balance.toFixed(2)}</td>
+          <td style="color: ${statusColor}; font-weight: 600;">${allowanceAmount.toFixed(2)}</td>
+          <td><span style="color: ${statusColor}; font-weight: 600;">${allow.warning}</span></td>
+        </tr>`;
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    function displayTradeHistory(tradeHistory) {
+      const container = document.getElementById('tradeHistoryContainer');
+      
+      if (!tradeHistory || tradeHistory.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No trades yet</p>';
+        return;
+      }
+
+      const tradesByDate = {};
+      tradeHistory.forEach((market) => {
+        if (!market.trades) return;
+        market.trades.forEach((trade) => {
+          // Parse date - matchTime can be ISO string or unix timestamp
+          let tradeDate;
+          if (trade.matchTime) {
+            // If it's a number, it's a unix timestamp in milliseconds
+            tradeDate = typeof trade.matchTime === 'number' 
+              ? new Date(trade.matchTime) 
+              : new Date(trade.matchTime);
+          } else {
+            tradeDate = new Date();
+          }
+          const dateKey = tradeDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+          if (!tradesByDate[dateKey]) tradesByDate[dateKey] = {};
+          const marketKey = market.market || market.eventTitle || 'Unknown';
+          if (!tradesByDate[dateKey][marketKey]) {
+            tradesByDate[dateKey][marketKey] = { eventTitle: market.eventTitle, reconciliation: market.reconciliation, bySide: { BUY: [], SELL: [] } };
+          }
+          const side = (trade.side || 'BUY').toUpperCase();
+          tradesByDate[dateKey][marketKey].bySide[side].push(trade);
+        });
+      });
+
+      let html = '';
+      const sortedDates = Object.keys(tradesByDate).sort().reverse();
+      sortedDates.forEach((dateKey) => {
+        const dateStr = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+        const markets = tradesByDate[dateKey];
+        const tradeCounts = {};
+        Object.values(markets).forEach(m => {
+          Object.values(m.bySide).forEach(trades => { tradeCounts[dateKey] = (tradeCounts[dateKey] || 0) + trades.length; });
+        });
+
+        html += `<details open style="margin-bottom: 15px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px;">
+          <summary style="cursor: pointer; color: #e2e8f0; font-weight: 700; display: flex; justify-content: space-between; align-items: center; font-size: 14px;">
+            <span>📅 ${dateStr}</span>
+            <span style="font-size: 12px; color: #94a3b8;">${tradeCounts[dateKey] || 0} trade(s)</span>
+          </summary>
+          <div style="margin-top: 12px;">`;
+
+        Object.entries(markets).forEach(([marketKey, marketData]) => {
+          const totalTradeCount = Object.values(marketData.bySide).reduce((sum, trades) => sum + trades.length, 0);
+          const eventTitle = marketData.eventTitle || 'Unknown';
+          const rec = marketData.reconciliation || { YES: { buy: 0, sell: 0, net: 0, position: 0, delta: 0 }, NO: { buy: 0, sell: 0, net: 0, position: 0, delta: 0 } };
+
+          html += `<details open style="margin-bottom: 12px; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(96, 165, 250, 0.25); border-radius: 8px; padding: 10px; margin-left: 10px;">
+            <summary style="cursor: pointer; color: #60a5fa; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+              <span>🏠 ${eventTitle}</span>
+              <span style="font-size: 11px; color: #94a3b8;">${totalTradeCount} trade(s)</span>
+            </summary>
+            <div style="margin-top: 10px; border-left: 2px solid rgba(96, 165, 250, 0.2); padding-left: 10px;">
+              <div style="overflow-x: auto; margin-bottom: 12px; background: rgba(15, 23, 42, 0.3); border-radius: 6px; padding: 8px;">
+                <table style="width: 100%; font-size: 10px;">
+                  <thead><tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);"><th style="padding: 4px; text-align: left; color: #94a3b8;">Outcome</th><th style="padding: 4px; text-align: right; color: #94a3b8;">Buys</th><th style="padding: 4px; text-align: right; color: #94a3b8;">Sells</th><th style="padding: 4px; text-align: right; color: #94a3b8;">Net</th><th style="padding: 4px; text-align: right; color: #94a3b8;">Pos</th><th style="padding: 4px; text-align: right; color: #94a3b8;">Delta</th></tr></thead><tbody>`;
+              ['YES','NO'].forEach(outcome => {
+                const row = rec[outcome] || { buy: 0, sell: 0, net: 0, position: 0, delta: 0 };
+                const deltaColor = Math.abs(row.delta) < 1e-4 ? '#10b981' : '#f59e0b';
+                html += `<tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);"><td style="padding: 4px; text-align: left;">${outcome}</td><td style="padding: 4px; text-align: right; color: #60a5fa;">${row.buy.toFixed(2)}</td><td style="padding: 4px; text-align: right; color: #f87171;">${row.sell.toFixed(2)}</td><td style="padding: 4px; text-align: right; color: #0ea5e9; font-weight: 500;">${row.net.toFixed(2)}</td><td style="padding: 4px; text-align: right; color: #10b981; font-weight: 500;">${row.position.toFixed(2)}</td><td style="padding: 4px; text-align: right; color: ${deltaColor}; font-weight: 600;">${row.delta.toFixed(2)}</td></tr>`;
+              });
+              html += `</tbody></table></div>`;
+              ['BUY', 'SELL'].forEach((side) => {
+                const trades = marketData.bySide[side] || [];
+                if (trades.length === 0) return;
+                const sideColor = side === 'BUY' ? '#60a5fa' : '#f87171';
+                const sideIcon = side === 'BUY' ? '📥' : '📤';
+                html += `<details style="margin-bottom: 10px; background: rgba(15, 23, 42, 0.2); border: 1px solid ${sideColor}33; border-radius: 6px; padding: 8px; margin-left: 10px;">
+                  <summary style="cursor: pointer; color: ${sideColor}; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                    <span>${sideIcon} ${side}</span>
+                    <span style="font-size: 10px; color: #94a3b8;">${trades.length} trade(s)</span>
+                  </summary>
+                  <div style="margin-top: 8px;">
+                    <table style="width: 100%; font-size: 10px;">
+                      <thead><tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);"><th style="padding: 4px; text-align: left; color: #94a3b8;">Time</th><th style="padding: 4px; text-align: left; color: #94a3b8;">Outcome</th><th style="padding: 4px; text-align: right; color: #94a3b8;">Size</th><th style="padding: 4px; text-align: right; color: #94a3b8;">Price</th><th style="padding: 4px; text-align: left; color: #94a3b8;">Status</th></tr></thead><tbody>`;
+                trades.forEach((trade) => {
+                  // Parse matchTime correctly - it can be ISO string or unix timestamp
+                  let tradeTime;
+                  if (trade.matchTime) {
+                    tradeTime = typeof trade.matchTime === 'number' 
+                      ? new Date(trade.matchTime) 
+                      : new Date(trade.matchTime);
+                  } else {
+                    tradeTime = new Date();
+                  }
+                  const time = tradeTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                  const size = parseFloat(trade.size || 0);
+                  const price = parseFloat(trade.price || 0);
+                  html += `<tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);"><td style="padding: 4px; text-align: left; color: #94a3b8; font-size: 9px;">${time}</td><td style="padding: 4px; text-align: left;">${trade.outcome}</td><td style="padding: 4px; text-align: right; color: #10b981;">${size.toFixed(2)}</td><td style="padding: 4px; text-align: right;">$${price.toFixed(4)}</td><td style="padding: 4px; text-align: left; font-size: 9px; color: #10b981;">✅</td></tr>`;
+                });
+                html += `</tbody></table></div></details>`;
+              });
+              html += `</div></details>`;
+        });
+
+        html += `</div></details>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function displayCoreTrades(trades) {
+      const container = document.getElementById('coreTradeContainer');
+
+      if (!trades || trades.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No core trades yet</p>';
+        return;
+      }
+
+      const tradesByDate = {};
+      trades.forEach((trade) => {
+        // Data API returns unix timestamp in seconds, not milliseconds
+        let tradeDate;
+        if (trade.timestamp) {
+          // timestamp is in seconds, convert to milliseconds
+          tradeDate = new Date(trade.timestamp * 1000);
+        } else if (trade.matchTime) {
+          // matchTime might be ISO string or milliseconds
+          tradeDate = typeof trade.matchTime === 'number'
+            ? new Date(trade.matchTime)
+            : new Date(trade.matchTime);
+        } else {
+          tradeDate = new Date();
+        }
+        const dateKey = tradeDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        if (!tradesByDate[dateKey]) tradesByDate[dateKey] = {};
+        const marketKey = trade.title || trade.slug || 'Unknown';
+        if (!tradesByDate[dateKey][marketKey]) {
+          tradesByDate[dateKey][marketKey] = { title: trade.title, slug: trade.slug, bySide: { BUY: [], SELL: [] } };
+        }
+        const side = (trade.side || 'BUY').toUpperCase();
+        tradesByDate[dateKey][marketKey].bySide[side].push(trade);
+      });
+
+      let html = '';
+      const sortedDates = Object.keys(tradesByDate).sort().reverse();
+      sortedDates.forEach((dateKey) => {
+        const dateStr = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+        const markets = tradesByDate[dateKey];
+        const tradeCounts = {};
+        Object.values(markets).forEach(m => {
+          Object.values(m.bySide).forEach(trds => { tradeCounts[dateKey] = (tradeCounts[dateKey] || 0) + trds.length; });
+        });
+
+        html += `<details open style="margin-bottom: 15px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px;">
+          <summary style="cursor: pointer; color: #e2e8f0; font-weight: 700; display: flex; justify-content: space-between; align-items: center; font-size: 14px;">
+            <span>📅 ${dateStr}</span>
+            <span style="font-size: 12px; color: #94a3b8;">${tradeCounts[dateKey] || 0} trade(s)</span>
+          </summary>
+          <div style="margin-top: 12px;">`;
+
+        Object.entries(markets).forEach(([marketKey, marketData]) => {
+          const totalTradeCount = Object.values(marketData.bySide).reduce((sum, trds) => sum + trds.length, 0);
+          const title = marketData.title || marketData.slug || 'Unknown';
+
+          html += `<details open style="margin-bottom: 12px; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(96, 165, 250, 0.25); border-radius: 8px; padding: 10px; margin-left: 10px;">
+            <summary style="cursor: pointer; color: #60a5fa; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+              <span>🏠 ${title}</span>
+              <span style="font-size: 11px; color: #94a3b8;">${totalTradeCount} trade(s)</span>
+            </summary>
+            <div style="margin-top: 10px; border-left: 2px solid rgba(96, 165, 250, 0.2); padding-left: 10px;">`;
+
+              ['BUY', 'SELL'].forEach((side) => {
+                const sideTrades = marketData.bySide[side] || [];
+                if (sideTrades.length === 0) return;
+                const sideColor = side === 'BUY' ? '#60a5fa' : '#f87171';
+                const sideIcon = side === 'BUY' ? '📥' : '📤';
+
+                html += `<details style="margin-bottom: 10px; background: rgba(15, 23, 42, 0.2); border: 1px solid ${sideColor}33; border-radius: 6px; padding: 8px; margin-left: 10px;">
+                  <summary style="cursor: pointer; color: ${sideColor}; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                    <span>${sideIcon} ${side}</span>
+                    <span style="font-size: 10px; color: #94a3b8;">${sideTrades.length} trade(s)</span>
+                  </summary>
+                  <div style="margin-top: 8px;">
+                    <table style="width: 100%; font-size: 10px;">
+                      <thead><tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);"><th style="padding: 4px; text-align: left; color: #94a3b8;">Time</th><th style="padding: 4px; text-align: left; color: #94a3b8;">Outcome</th><th style="padding: 4px; text-align: right; color: #94a3b8;">Size</th><th style="padding: 4px; text-align: right; color: #94a3b8;">Price</th><th style="padding: 4px; text-align: left; color: #94a3b8;">Tx</th></tr></thead><tbody>`;
+                sideTrades.forEach((trade) => {
+                  // Data API timestamp is in seconds, convert to milliseconds
+                  let tradeTime;
+                  if (trade.timestamp) {
+                    tradeTime = new Date(trade.timestamp * 1000);
+                  } else if (trade.matchTime) {
+                    tradeTime = typeof trade.matchTime === 'number'
+                      ? new Date(trade.matchTime)
+                      : new Date(trade.matchTime);
+                  } else {
+                    tradeTime = new Date();
+                  }
+                  const time = tradeTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                  const size = parseFloat(trade.size || 0);
+                  const price = parseFloat(trade.price || 0);
+                  const tx = trade.transactionHash ? `${trade.transactionHash.slice(0, 8)}…` : '—';
+                  html += `<tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);"><td style="padding: 4px; text-align: left; color: #94a3b8; font-size: 9px;">${time}</td><td style="padding: 4px; text-align: left;">${trade.outcome || 'N/A'}</td><td style="padding: 4px; text-align: right; color: #10b981;">${size.toFixed(4)}</td><td style="padding: 4px; text-align: right;">$${price.toFixed(4)}</td><td style="padding: 4px; text-align: left; font-size: 9px; color: #94a3b8;" title="${trade.transactionHash}">${tx}</td></tr>`;
+                });
+                html += `</tbody></table></div></details>`;
+              });
+
+              html += `</div></details>`;
+        });
+
+        html += `</div></details>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    async function refresh() {
+      try {
+        showMessage('🔄 Refreshing all data...', 'info');
+        debugLog('Starting data refresh...');
+
+        let allData;
+
+        if (window.preloadedData) {
+          debugLog('✅ Using preloaded data from server');
+          allData = window.preloadedData;
+          allData.success = true;
+          allData.balances = allData.balances || {};
+          allData.orders = allData.orders || [];
+          allData.positions = allData.positions || [];
+          allData.closed = allData.closed || [];
+          allData.tradeHistory = allData.tradeHistory || allData.trades || [];
+          allData.coreTrades = allData.coreTrades || [];
+          debugLog(`📊 Data loaded: balances=${Object.keys(allData.balances).length}, orders=${allData.orders.length}, positions=${allData.positions.length}, trades=${allData.tradeHistory.length}`);
+          delete window.preloadedData; // Next refresh will fetch fresh data
+        } else {
+          debugLog('📡 Fetching all data from GET /api/data...');
+          const response = await fetch('/api/data', { method: 'GET' });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          allData = await response.json();
+          debugLog('✅ Got data response');
+                // FIRST: Try to use preloaded data
+                if (window.preloadedData) {
+                  debugLog('✅ Using preloaded data from server');
+                  allData = {
+                    success: true,
+                    balances: window.preloadedData.balances || { eoaBalance: 0, safeBalance: 0, funderBalance: 0 },
+                    orders: window.preloadedData.orders || [],
+                    positions: window.preloadedData.positions || [],
+                    closed: window.preloadedData.closed || [],
+                    tradeHistory: window.preloadedData.trades || []
+                  };
+          
+                  const totalBal = (allData.balances.eoaBalance || 0) + (allData.balances.safeBalance || 0) + (allData.balances.funderBalance || 0);
+                  debugLog(`📊 Preloaded: Balance=$${totalBal.toFixed(2)}, Orders=${allData.orders.length}, Positions=${allData.positions.length}, Trades=${allData.tradeHistory.length}`);
+                  delete window.preloadedData; // Use fresh data next time
+                }
+
+                // SECOND: Fetch live data from APIs
+                debugLog('📡 Fetching live data from server...');
+                try {
+                  const [balRes, ordersRes, posRes, closedRes, tradesRes] = await Promise.allSettled([
+                    fetch('/api/balances', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()),
+                    fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()),
+                    fetch('/api/positions-core', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()),
+                    fetch('/api/closed-positions-core', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()),
+                    fetch('/api/trade-history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json())
+                  ]);
+
+                  // Merge live data with preloaded
+                  if (balRes.status === 'fulfilled' && balRes.value.success) {
+                    const bals = balRes.value.balances || [];
+                    allData.balances = {
+                      eoaBalance: (bals.find(b => b.role?.includes('Private key'))?.amount) || 0,
+                      safeBalance: (bals.find(b => b.role?.includes('Holds USDC'))?.amount) || 0,
+                      funderBalance: (bals.find(b => b.role?.includes('Builder funder'))?.amount) || 0
+                    };
+                    debugLog(`💰 Live balances: ${JSON.stringify(allData.balances)}`);
+                  }
+
+                  if (ordersRes.status === 'fulfilled' && ordersRes.value.success) {
+                    allData.orders = ordersRes.value.orders || [];
+                    debugLog(`📋 Live orders: ${allData.orders.length}`);
+                  }
+
+                  if (posRes.status === 'fulfilled' && posRes.value.success) {
+                    allData.positions = posRes.value.positions || [];
+                    debugLog(`📈 Live positions: ${allData.positions.length}`);
+                  }
+
+                  if (closedRes.status === 'fulfilled' && closedRes.value.success) {
+                    allData.closed = closedRes.value.data || [];
+                    debugLog(`📊 Closed positions: ${allData.closed.length}`);
+                  }
+
+                  if (tradesRes.status === 'fulfilled' && tradesRes.value.success) {
+                    allData.tradeHistory = tradesRes.value.tradeHistory || [];
+                    debugLog(`📜 Trade history: ${allData.tradeHistory.length}`);
+                  }
+
+                  allData.success = true;
+                } catch (err) {
+                  debugLog(`⚠️ Live fetch error: ${err.message}, using preloaded data`);
+                }
+        }
+
+        if (allData.success) {
+          // Update status dots and ages if present
+          if (allData.status) {
+            updateAllStatuses(allData.status, allData.timestamp);
+          }
+          
+          if (allData.balances) {
+            const total = (allData.balances.eoaBalance || 0) + (allData.balances.safeBalance || 0) + (allData.balances.funderBalance || 0);
+            document.getElementById('balanceAmount').textContent = `$${total.toFixed(2)} USDC`;
+            debugLog(`💰 Balance displayed: $${total.toFixed(2)}`);
+            setAge('balancesAge', allData.timestamp);
+          }
+
+          if (allData.orders && allData.orders.length > 0) {
+            orders = allData.orders;
+            displayOrders();
+            debugLog(`📋 Orders displayed: ${orders.length}`);
+          } else {
+            const ok = allData.status && allData.status.orders && allData.status.orders.ok;
+            const msg = ok === false ? '❌ Failed to load orders' : '✅ No pending orders';
+            const color = ok === false ? '#f87171' : '#94a3b8';
+            document.getElementById('ordersContainer').innerHTML = `<p style="color: ${color}; text-align: center; padding: 20px;">${msg}</p>`;
+          }
+          setAge('ordersAge', allData.timestamp);
+
+          if (allData.positions && allData.positions.length > 0) {
+            positions = allData.positions;
+            displayPositions();
+            debugLog(`📈 Positions displayed: ${positions.length}`);
+          } else {
+            const ok = allData.status && allData.status.positions && allData.status.positions.ok;
+            const msg = ok === false ? '❌ Failed to load positions' : '✅ No open positions';
+            const color = ok === false ? '#f87171' : '#94a3b8';
+            document.getElementById('positionsContainer').innerHTML = `<p style="color: ${color}; text-align: center; padding: 20px;">${msg}</p>`;
+          }
+          setAge('positionsAge', allData.timestamp);
+
+          // Refresh closed positions from dedicated endpoints for Core and CLOB
+          await refreshClosedPositions();
+          debugLog(`📊 Closed positions refreshed`);
+          setAge('closedAge', allData.timestamp);
+
+          if (allData.tradeHistory && allData.tradeHistory.length > 0) {
+            clobTrades = allData.tradeHistory;
+            displayTradeHistory(clobTrades);
+            debugLog(`📜 Trade history displayed: ${clobTrades.length}`);
+          } else {
+            document.getElementById('tradeHistoryContainer').innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">✅ No trades yet</p>';
+          }
+          // Display Core trades from bundle when available, otherwise fetch
+          if (allData.coreTrades && allData.coreTrades.length > 0) {
+            coreTrades = allData.coreTrades;
+            displayCoreTrades(coreTrades);
+            debugLog(`📜 Core trades displayed: ${coreTrades.length}`);
+          } else {
+            debugLog('📡 Core trades not bundled; fetching via endpoint...');
+            const coreResp = await fetch('http://localhost:8000/api/trades-core', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ takerOnly: true })
+            }).then(r => r.json()).catch(() => ({ success: false }));
+            if (coreResp.success && Array.isArray(coreResp.trades)) {
+              coreTrades = coreResp.trades;
+              displayCoreTrades(coreTrades);
+              debugLog(`📜 Core trades displayed (fallback): ${coreTrades.length}`);
+            }
+          }
+          setAge('tradesAge', allData.timestamp);
+
+          // Refresh PnL data from Data API
+          await refreshPnLData();
+          debugLog('📊 PnL data refreshed');
+
+          showMessage('✅ All data refreshed', 'success');
+          document.getElementById('updateTime').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+          debugLog('✅ Refresh complete');
+        } else {
+          throw new Error(allData.error || 'Unknown error');
+        }
+      } catch (error) {
+        debugLog(`❌ Refresh error: ${error.message}`);
+        showMessage('⚠️ Error loading data: ' + error.message, 'error');
+      }
+    }
+
+    // Helpers: statuses and ages
+    function setDot(dotId, ok) {
+      const el = document.getElementById(dotId);
+      if (!el) return;
+      el.classList.remove('connected', 'error');
+      el.classList.add(ok ? 'connected' : 'error');
+    }
+
+    function setStatusText(textId, ok, error) {
+      const el = document.getElementById(textId);
+      if (!el) return;
+      el.textContent = ok ? 'OK' : (error ? `Error: ${error}` : 'Error');
+      el.style.color = ok ? '#10b981' : '#ef4444';
+    }
+
+    function formatAge(ts) {
+      if (!ts) return '';
+      const then = new Date(ts).getTime();
+      const now = Date.now();
+      const diff = Math.max(0, Math.floor((now - then) / 1000));
+      if (diff < 5) return 'just now';
+      if (diff < 60) return `${diff}s ago`;
+      const m = Math.floor(diff / 60);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      return `${h}h ago`;
+    }
+
+    function setAge(ageElId, ts) {
+      const el = document.getElementById(ageElId);
+      if (!el) return;
+      el.textContent = formatAge(ts);
+    }
+
+    function updateAllStatuses(statusMap, ts) {
+      const mapping = [
+        { key: 'balances', dot: 'balancesDot', text: 'balancesStatusText' },
+        { key: 'orders', dot: 'ordersDot', text: 'ordersStatusText' },
+        { key: 'positions', dot: 'positionsDot', text: 'positionsStatusText' },
+        { key: 'closed', dot: 'closedDot', text: 'closedStatusText' },
+        { key: 'tradeHistory', dot: 'tradeCacheDot', text: 'tradeCacheStatusText' },
+        { key: 'coreTrades', dot: 'coreTradesDot', text: 'coreTradesStatusText' }
+      ];
+      mapping.forEach(({ key, dot, text }) => {
+        const s = statusMap[key] || { ok: false };
+        setDot(dot, !!s.ok);
+        setStatusText(text, !!s.ok, s.error);
+      });
+      // Also update the main server status age label
+      setAge('balancesAge', ts);
+      setAge('ordersAge', ts);
+      setAge('positionsAge', ts);
+      setAge('closedAge', ts);
+      setAge('tradesAge', ts);
+    }
+
+    function showMessage(text, type) {
+      const box = document.getElementById('messageBox');
+      box.textContent = text;
+      box.className = `message show ${type}`;
+      setTimeout(() => box.classList.remove('show'), 5000);
+    }
+
+    function debugLog(message) {
+      const debugConsole = document.getElementById('debugConsole');
+      debugConsole.style.display = 'block';
+      const timestamp = new Date().toLocaleTimeString();
+      const line = document.createElement('div');
+      line.textContent = `[${timestamp}] ${message}`;
+      debugConsole.appendChild(line);
+      debugConsole.scrollTop = debugConsole.scrollHeight;
+      console.log(message);
+    }
+
+    // Check server status
+    async function checkServer() {
+        try {
+            debugLog('🔍 Checking server health...');
+            const response = await fetch('http://127.0.0.1:8000/health', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            debugLog(`✅ Server response: ${response.status}`);
+            if (response.ok) {
+                document.getElementById('serverStatus').textContent = '✅ Server Connected';
+                document.getElementById('serverStatus').style.color = 'green';
+                document.getElementById('serverDot').style.background = '#10b981';
+                return true;
+            } else {
+                debugLog(`❌ Server error: ${response.status}`);
+                document.getElementById('serverStatus').textContent = '❌ Server Error';
+                document.getElementById('serverStatus').style.color = 'red';
+                document.getElementById('serverDot').style.background = '#ef4444';
+                return false;
+            }
+        } catch (error) {
+            debugLog(`❌ Server offline: ${error.message}`);
+            document.getElementById('serverStatus').textContent = '❌ Server Offline';
+            document.getElementById('serverStatus').style.color = 'red';
+            document.getElementById('serverDot').style.background = '#ef4444';
+            console.error('Server connection error:', error);
+            return false;
+        }
+    }
+
+    // Initialize immediately - use preloaded data if available
+    (async function() {
+        debugLog('⏱️ Initializing dashboard...');
+        try {
+            // Always try to refresh (will use preloaded data if available)
+            await refresh();
+            
+            // Check server in background (don't block on it)
+            checkServer().catch(e => debugLog(`Background server check failed: ${e.message}`));
+            
+            // Auto-refresh every 10 seconds
+            setInterval(async () => {
+                try {
+                    debugLog('🔄 Auto-refresh triggered');
+                    await refresh();
+                } catch (e) {
+                    debugLog(`Auto-refresh error: ${e.message}`);
+                }
+            }, 10000);
+        } catch (e) {
+            debugLog(`❌ Init error: ${e.message}`);
+            showMessage('❌ Error initializing dashboard: ' + e.message, 'error');
+        }
+    })();
+
+</script>
+  </body>
+</html>
