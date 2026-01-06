@@ -1,0 +1,23 @@
+{
+  "name": "polytrade",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Polymarket trading dashboard using Core Data APIs",
+  "main": "dashboard-server.js",
+  "scripts": {
+    "start": "node dashboard-server.js"
+  },
+  "dependencies": {
+    "@polymarket/builder-relayer-client": "^0.0.8",
+    "@polymarket/builder-signing-sdk": "^0.0.8",
+    "@polymarket/clob-client": "^5.1.2",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "ethers": "^5.8.0",
+    "express": "^4.22.1",
+    "magic-sdk": "^32.0.0",
+    "viem": "^2.43.3",
+    "ws": "^8.18.3"
+  }
+}

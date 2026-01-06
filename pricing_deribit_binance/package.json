@@ -1,0 +1,21 @@
+{
+  "name": "trader-dashboard",
+  "version": "1.0.0",
+  "description": "Unified trading dashboard: Polymarket + Deribit + Binance with timezone-aware pricing",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test"
+  },
+  "keywords": ["polymarket", "deribit", "binance", "options", "pricing"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.17.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {}
+}
