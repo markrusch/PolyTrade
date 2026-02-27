@@ -1,0 +1,66 @@
+{
+  "$schema": "./service-registry.schema.json",
+  "version": "1.0.0",
+  "description": "PolyTrade Service Registry - defines all services that can be started/stopped",
+  "services": [
+    {
+      "name": "backend",
+      "displayName": "Backend API Server",
+      "command": "npm",
+      "args": ["run", "server"],
+      "cwd": ".",
+      "port": 3003,
+      "healthCheck": "http://localhost:3003/api/health",
+      "startupWait": 8,
+      "required": true,
+      "env": {
+        "TSX_DISABLE_CACHE": "1"
+      },
+      "dependsOn": []
+    },
+    {
+      "name": "ui",
+      "displayName": "Frontend UI Dev Server",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "cwd": "ui",
+      "port": 5173,
+      "healthCheck": "http://localhost:5173",
+      "startupWait": 5,
+      "required": true,
+      "env": {},
+      "dependsOn": ["backend"]
+    }
+  ],
+  "globalEnv": {
+    "POLYMARKET_FUNDER_ADDRESS": "0x5A026A851AEF0d7835210587E3bEeD46F8C7cC97",
+    "POLYMARKET_USER_ADDRESS": "0x5A026A851AEF0d7835210587E3bEeD46F8C7cC97",
+    "FUNDER_ADDRESS": "0x5A026A851AEF0d7835210587E3bEeD46F8C7cC97"
+  },
+  "featureFlags": {
+    "ENABLE_BINANCE": {
+      "default": "false",
+      "description": "Enable Binance spot trading integration"
+    },
+    "ENABLE_DERIBIT": {
+      "default": "false",
+      "description": "Enable Deribit options integration"
+    },
+    "ENABLE_POLYMARKET_TRADING": {
+      "default": "true",
+      "description": "Enable Polymarket CLOB trading"
+    }
+  },
+  "preflight": {
+    "hardFail": [
+      "ports_available",
+      "node_modules_exists",
+      "npm_scripts_exist",
+      "no_stale_lock"
+    ],
+    "softWarn": [
+      "env_file_exists",
+      "feature_flags_set"
+    ]
+  }
+}
