@@ -162,13 +162,11 @@ AnalysisEngine
 
 The React dashboard (Vite, port `5173`) is organized into two top-level tabs: **Trading Dashboard** and **Research**. The Trading Dashboard further subdivides into **Trading**, **Markets**, and **Discovery** sub-views.
 
-> **Screenshots:** Save the corresponding PNG files to `docs/screenshots/` to render the images below.
-
 ---
 
 ### 1. Trading Dashboard
 
-![Trading Dashboard](docs/screenshots/trading-dashboard.png)
+![Trading Dashboard](https://raw.githubusercontent.com/markrusch/PolyTrade/main/docs/screenshots/trading-dashboard.png)
 
 The primary operational view. Split into three panels:
 
@@ -212,7 +210,7 @@ Live bid/ask ladder fetched from the Polymarket CLOB. Red rows are asks (offers 
 
 ### 2. Market Discovery
 
-![Market Discovery](docs/screenshots/market-discovery.png)
+![Market Discovery](https://raw.githubusercontent.com/markrusch/PolyTrade/main/docs/screenshots/market-discovery.png)
 
 The **Discovery** sub-view scans for available Polymarket markets matching the selected crypto asset and date range.
 
@@ -248,7 +246,7 @@ Markets deep out-of-the-money (near $66,000 when spot is $65,600) display a **Wi
 
 ### 3. Pricing Table
 
-![Pricing Table](docs/screenshots/pricing-table.png)
+![Pricing Table](https://raw.githubusercontent.com/markrusch/PolyTrade/main/docs/screenshots/pricing-table.png)
 
 The **BTC Live Pricing** table (accessed via "Show Pricing Table") compares **market prices vs. derived (Black-Scholes) prices** side-by-side for every wired market.
 
@@ -266,7 +264,7 @@ The top-right shows **Spot staleness** and **IV staleness** in seconds — these
 
 ### 4. Markets Overview
 
-![Markets Overview](docs/screenshots/markets-overview.png)
+![Markets Overview](https://raw.githubusercontent.com/markrusch/PolyTrade/main/docs/screenshots/markets-overview.png)
 
 The **Markets** sub-view gives a compact status panel for all known markets, with four filter tabs:
 
@@ -293,7 +291,7 @@ Each market card shows:
 
 ### 5. Portfolio & Orders
 
-![Portfolio & Orders](docs/screenshots/portfolio-orders.png)
+![Portfolio & Orders](https://raw.githubusercontent.com/markrusch/PolyTrade/main/docs/screenshots/portfolio-orders.png)
 
 The **Portfolio & Orders** top-level tab is the position management hub.
 
@@ -335,7 +333,7 @@ Full position history with **Status** and **Type** filters:
 
 ### 6. Safety Monitor
 
-![Safety Monitor](docs/screenshots/safety-monitor.png)
+![Safety Monitor](https://raw.githubusercontent.com/markrusch/PolyTrade/main/docs/screenshots/safety-monitor.png)
 
 The **Safety Monitor** panel (in the Controls tab) provides a real-time health dashboard for all wired markets.
 
@@ -362,7 +360,7 @@ The system performs the following checks before generating any quote:
 
 ### 7. Research — Data
 
-![Research Data](docs/screenshots/research-data.png)
+![Research Data](https://raw.githubusercontent.com/markrusch/PolyTrade/main/docs/screenshots/research-data.png)
 
 The **Research** top-level tab is the data pipeline and analysis hub. It has four sub-tabs: **Data**, **Query**, **Analysis**, and **Scanner**.
 
@@ -398,7 +396,7 @@ Controls for pulling historical data into the research DB:
 
 ### 8. Research — Scanner
 
-![Research Scanner](docs/screenshots/research-scanner.png)
+![Research Scanner](https://raw.githubusercontent.com/markrusch/PolyTrade/main/docs/screenshots/research-scanner.png)
 
 The **Scanner** sub-tab surfaces actionable opportunities from the research database.
 
